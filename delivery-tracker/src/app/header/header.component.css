@@ -1,0 +1,39 @@
+.login-form {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f1f1f1;
+  padding: 0.5rem;
+  .image {
+    display: flex;
+    padding: 0.5rem;
+  }
+  .header {
+    padding: 0.5rem;
+    display: flex;
+    font-size: 1.5rem;
+  }
+  .menu {
+    display: flex;
+    padding: 0.5rem;
+  }
+  img {
+    width: 100px;
+    height: 50px;
+  }
+  .auth {
+    .signup {
+      margin-right: 0.5rem;
+    }
+  }
+}
+
+
+:host {
+  height: 60px; /* Adjust based on actual height */
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1000;
+}

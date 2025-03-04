@@ -1,0 +1,25 @@
+<div class="login-form">
+  <div class="image">
+    <img src="assets/images/deliverytracker.png" alt="Delivery Tracker" />
+  </div>
+  <div class="header">
+    <span><strong>Delivery Tracker</strong></span>
+  </div>
+
+  <div *ngIf="isLoggedIn" class="menu">
+    <button mat-button [matMenuTriggerFor]="beforeMenu">
+      <strong>{{ username }}</strong>
+    </button>
+
+    <mat-menu #beforeMenu="matMenu" xPosition="before">
+      <button mat-menu-item (click)="profile(username)">Profile</button>
+      <button mat-menu-item (click)="update()">Update</button>
+      <button mat-menu-item (click)="logout()">Logout</button>
+    </mat-menu>
+  </div>
+
+  <div *ngIf="!isLoggedIn" class="auth">
+    <a routerLink="/signup" class="signup">Sign up</a>
+    <a routerLink="/login" class="login">Login</a>
+  </div>
+</div>

@@ -1,0 +1,11 @@
+<h2>Your Orders</h2>
+<div *ngFor="let order of orders">
+  <p>Order ID: {{ order.id }}</p>
+  <p>Status: {{ order.status }}</p>
+
+  <!-- Track Button Only for Shipped Orders -->
+  <button *ngIf="order.status === 'In Transit'" (click)="trackCurrentOrder(order.id)">
+    Track
+  </button>
+  <hr />
+</div>

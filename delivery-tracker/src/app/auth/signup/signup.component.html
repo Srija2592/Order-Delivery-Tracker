@@ -1,0 +1,92 @@
+<div class="signup-comp">
+  <div class="signup-form">
+    <div class="signup-head">
+      <h1 class="">Signup</h1>
+    </div>
+    <div class="signup-form">
+      <form [formGroup]="signupForm" (ngSubmit)="signup()">
+        <div class="mb-3">
+          <label for="email_address" class="email-name">Email </label>
+
+          <input
+            type="text"
+            [formControlName]="'email'"
+            id="email"
+            class=""
+            name="email"
+          />
+          <br />
+          <small
+            *ngIf="
+              !signupForm.get('email')?.valid &&
+              signupForm.get('email')?.touched
+            "
+            class="error-text"
+          >
+            please provide a valid email
+          </small>
+        </div>
+        <br />
+
+        <div class="">
+          <label for="username" class="username-name">Username</label>
+
+          <input
+            type="password"
+            [formControlName]="'username'"
+            id="username"
+            class=" "
+            name="username"
+            required
+          />
+          <br />
+          <small
+            *ngIf="
+              !signupForm.get('username')?.valid &&
+              signupForm.get('username')?.touched
+            "
+            class="error-text"
+          >
+            please provide a valid username
+          </small>
+        </div>
+        <br />
+
+        <div class="">
+          <label for="password" class="password-name">Password</label>
+
+          <input
+            type="password"
+            [formControlName]="'password'"
+            id="password"
+            class=""
+            name="password"
+            required
+          />
+          <br />
+          <small
+            *ngIf="
+              !signupForm.get('password')?.valid &&
+              signupForm.get('password')?.touched
+            "
+            class="error-text"
+          >
+            please provide a valid Password
+          </small>
+        </div>
+        <br />
+
+        <div class="redirect">
+          <div class="signup-button">
+            <button type="submit" class="signup-button">SIGNUP</button>
+          </div>
+          <br>
+
+          <div class="login-link">
+            Existing User? <a routerLink="/login" class="">LOGIN</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

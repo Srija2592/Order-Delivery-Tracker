@@ -1,0 +1,34 @@
+.login-comp {
+  display: flex;
+  border: 1px solid#ccc;
+  background-color: #f1f1f1;
+  width: 20rem;
+  height: 22rem;
+  margin: 2rem;
+  margin-left: 30rem;
+  margin-right: 30rem;
+  .login-form {
+    margin: 2rem;
+
+    .login-head {
+      text-align: center;
+      margin-top: 0.5rem;
+    }
+
+    .username-name {
+      margin-right: 0.8rem;
+    }
+    .password-name {
+      margin-right: 0.9rem;
+    }
+    .error-text {
+      color: red;
+    }
+    .redirect{
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+    }
+
+  }
+}

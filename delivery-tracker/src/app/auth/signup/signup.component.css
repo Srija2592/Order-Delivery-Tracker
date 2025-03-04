@@ -1,0 +1,36 @@
+.signup-comp {
+  display: flex;
+  border: 1px solid#ccc;
+  background-color: #f1f1f1;
+  width: 20rem;
+  height: 25rem;
+  margin: 2rem;
+  margin-left: 30rem;
+  margin-right: 30rem;
+  .signup-form {
+    margin: 2rem;
+
+    .signup-head {
+      text-align: center;
+      margin-top: 0.5rem;
+    }
+    .email-name {
+      margin-right: 2.4rem;
+    }
+    .username-name {
+      margin-right: 0.8rem;
+    }
+    .password-name {
+      margin-right: 0.9rem;
+    }
+    .error-text {
+      color: red;
+    }
+    .redirect{
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+    }
+
+  }
+}

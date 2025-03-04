@@ -1,0 +1,74 @@
+<div class="login-comp">
+  <div class="login-form">
+    <div class="login-head">
+      <h1 class="">Login</h1>
+    </div>
+    <div class="login-form">
+      <form [formGroup]="loginForm" (ngSubmit)="login()">
+        <div class="">
+          <label for="user_name" class="username-name">Username</label>
+
+          <input
+            type="text"
+            id="user_name"
+            class=""
+            [formControlName]="'username'"
+            name="user_name"
+            required
+            autofocus
+          />
+          <small
+            *ngIf="
+              !loginForm.get('username')?.valid &&
+              loginForm.get('username')?.touched
+            "
+            class="error-text"
+          >
+            Please provide a valid username
+          </small>
+        </div>
+        <br />
+        <div class="mb-4">
+          <label for="password" class="password-name">Password</label>
+
+          <input
+            type="password"
+            id="password"
+            class=""
+            [formControlName]="'password'"
+            name="password"
+            required
+          />
+          <small
+            *ngIf="
+              !loginForm.get('password')?.valid &&
+              loginForm.get('password')?.touched
+            "
+            class="error-text"
+          >
+            Password cannot be empty
+          </small>
+        </div>
+        <br />
+        <div class="redirect">
+          <div class="login-button">
+            <button type="submit" class="">LOGIN</button>
+            <div ><br>
+              <div>
+              New User? <a routerLink="/signup" class="">SIGNUP</a>
+            </div>
+          </div>
+          </div>
+          <div class="" *ngIf="this.isError">
+            <p class="">
+              Login Failed. Please check your credentials and try again.
+            </p>
+          </div>
+          <div class="" *ngIf="this.registerSuccessMessage.length > 0">
+            <p class="">{{ registerSuccessMessage }}</p>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
