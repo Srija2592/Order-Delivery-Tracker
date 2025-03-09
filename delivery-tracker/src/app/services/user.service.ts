@@ -1,8 +1,9 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { catchError, Observable, throwError } from 'rxjs';
 import { User } from '../models/user';
 import { AuthService } from './auth.service';
+import { LocationUpdate } from './delivery.service';
 
 @Injectable({
   providedIn: 'root'
@@ -22,15 +23,26 @@ export class UserService {
     return this.http.get<User>(`${this.apiUrl}/user/${username}`, { headers: this.authService.getHeaders() });
   }
 
-  getUserOrders(username: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/deliveries/user/orders/${username}`, { headers: this.authService.getHeaders() });
+  getLiveLocation(orderId: string): Observable<LocationUpdate> {
+    return this.http.get<LocationUpdate>(`${this.apiUrl}/user/track/${orderId}`, {
+      headers: this.authService.getHeaders(),
+    }).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Error fetching live location:', error);
+        return throwError(() => new Error(`Error: ${error.message}`));
+      })
+    );
   }
 
   addOrder(orderData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/deliveries/orders`, orderData, { headers: this.authService.getHeaders() });
-  }
+      return this.http.post(`${this.apiUrl}/user/orders`, orderData, { headers: this.authService.getHeaders() });
+    }
 
-  getOrderDetails(orderId: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/deliveries/orders/${orderId}`, { headers: this.authService.getHeaders() });
-  }
+    getUserOrders(username: string): Observable<any[]> {
+      return this.http.get<any[]>(`${this.apiUrl}/user/orders/username/${username}`, { headers: this.authService.getHeaders() });
+    }
+
+    getOrderDetails(orderId: string): Observable<any> {
+      return this.http.get(`${this.apiUrl}/user/orders/${orderId}`, { headers: this.authService.getHeaders() });
+    }
 }

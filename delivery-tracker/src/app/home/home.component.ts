@@ -13,12 +13,13 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
       const role = this.authService.getUserRole();
+      console.log(role)
       if (role[0] === 'ROLE_ADMIN') {
         this.router.navigate(['/admin']);
       } else if (role[0] === 'ROLE_USER') {
         this.router.navigate(['/']);
       } else {
-        this.router.navigate(['/']);
+        this.router.navigate(['/delivery-order']);
       }
     } else {
       this.router.navigate(['/unauthorized']);

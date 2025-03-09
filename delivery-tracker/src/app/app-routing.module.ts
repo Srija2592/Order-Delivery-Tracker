@@ -7,11 +7,13 @@ import { ProfileComponent } from './profile/profile.component';
 import { UnauthorizedPageComponent } from './unauthorized-page/unauthorized-page.component';
 import { SignupComponent } from './auth/signup/signup.component';
 import { HomeComponent } from './home/home.component';
+import { DeliveryOrdersComponent } from './delivery-orders/delivery-orders.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'signup', component: SignupComponent }, // ✅ Moved before wildcard
   { path: '', component: HomeComponent },
+  { path: 'delivery-order', component: DeliveryOrdersComponent },
   {
     path: 'profile',
     component: ProfileComponent

@@ -1,1 +1,1 @@
-<div id="map-tracker-{{ currentOrderId }}" class="map-container"></div>
+<div *ngIf="currentOrderId" [id]="'map-tracker-' + currentOrderId" style="height: 600px; width: 100%;"></div>

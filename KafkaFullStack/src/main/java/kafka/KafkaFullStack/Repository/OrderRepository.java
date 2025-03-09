@@ -5,5 +5,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 
 public interface OrderRepository extends MongoRepository<Order, String> {
-    List<Order> findAllByUsername(String userId);
+    List<Order> findAllByCreator_username(String userId);
 }

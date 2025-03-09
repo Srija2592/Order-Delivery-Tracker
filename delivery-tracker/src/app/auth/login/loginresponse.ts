@@ -3,7 +3,7 @@ export interface LoginResponse {
   refreshToken: string;
   expiresAt: Date;
   username: string;
-  roles:string[];
+  role:string[];
 }
 
 export interface RefreshTokenPayload{

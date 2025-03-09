@@ -1,0 +1,50 @@
+.delivery-container {
+  padding: 20px;
+}
+
+.orders-list, .assigned-order {
+  margin-bottom: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+button {
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.order-info {
+  margin: 10px 0;
+}
+
+.update-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+}
+
+input {
+  padding: 5px;
+  margin-top: 5px;
+}

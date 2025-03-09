@@ -5,12 +5,12 @@ import lombok.Data;
 @Data
 public class LocationUpdate {
     private String orderId;
-    private double lat;
-    private double lon;
+    private Double lat;
+    private Double lon;
     private String status;
     private long timestamp;
 
-    public LocationUpdate(String orderId, double lat, double lon, String status, long timestamp) {
+    public LocationUpdate(String orderId, Double lat, Double lon, String status, long timestamp) {
         this.orderId = orderId;
         this.lat = lat;
         this.lon = lon;

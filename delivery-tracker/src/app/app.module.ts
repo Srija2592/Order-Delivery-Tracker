@@ -25,6 +25,7 @@ import { MatInputModule } from '@angular/material/input';
 import { HttpClientModule } from '@angular/common/http';
 import { ProfileComponent } from './profile/profile.component';
 import { MatOptionModule } from '@angular/material/core';
+import { DeliveryOrdersComponent } from './delivery-orders/delivery-orders.component';
 
 @NgModule({
   declarations: [
@@ -36,7 +37,8 @@ import { MatOptionModule } from '@angular/material/core';
     UpdateComponent,
     TrackerComponent,
     UnauthorizedPageComponent,
-    ProfileComponent
+    ProfileComponent,
+    DeliveryOrdersComponent
   ],
   imports: [
     BrowserModule,

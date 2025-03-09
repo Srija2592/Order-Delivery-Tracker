@@ -26,7 +26,7 @@ export class HeaderComponent implements OnInit, OnChanges {
     authenticationToken: '',
     expiresAt: new Date(),
     refreshToken: '',
-    roles: [],
+    role: [],
   };
   constructor(
     private router: Router,

@@ -1,16 +1,30 @@
 .map-container {
-  height: 500px;
+  height: 100%;
+  width: 100%;
+  min-height: 400px;
+  position: relative;
+  z-index: 1;
+}
+
+:host {
+  display: block;
+  height: 100%;
   width: 100%;
 }
 
-.custom-marker {
-  background-color: #2c3e50;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-weight: bold;
+.custom-marker .marker-label {
+  background-color: #fff;
+  border: 1px solid #000;
+  border-radius: 4px;
+  padding: 2px 6px;
+  text-align: center;
 }
 
-.vehicle-marker {
-  font-size: 24px;
+
+
+.vehicle-marker .vehicle-icon {
+  font-size: 40x; /* Increased font size for larger vehicle icon */
+  color: #ff4500; /* Orange color for visibility */
+  text-align: center;
+  line-height: 60px; /* Match the height for vertical centering */
 }

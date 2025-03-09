@@ -1,0 +1,51 @@
+
+<div class="delivery-container">
+  <h2>Delivery Dashboard</h2>
+
+  <!-- Unassigned Orders List -->
+  <div class="orders-list">
+    <h3>Available Orders</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Customer</th>
+          <th>Items</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let order of allOrders">
+          <td>{{ order.id }}</td>
+          <td>{{ order.username }}</td>
+          <td>{{ order.items.join(', ') }}</td>
+          <td>{{ order.status }}</td>
+          <td><button (click)="assignOrder(order.id)">Assign to Me</button></td>
+        </tr>
+        <tr *ngIf="allOrders.length === 0">
+          <td colspan="5">No unassigned orders available</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Assigned Order Details and Update Form -->
+   <div *ngFor="let assignedOrder1 of assignedOrders">
+  <div class="assigned-order" *ngIf="assignedOrder1">
+    <h3>Assigned Order #{{ assignedOrder1.id }}</h3>
+    <div class="order-info">
+      <p>Customer: {{ assignedOrder1.assignment.username }}</p>
+      <p>Items: {{ assignedOrder1.items.join(', ') }}</p>
+      <p>Status: {{ assignedOrder1.status }}</p>
+      <p>Current Location: [{{ assignedOrder1.curLat | number:'1.4-4' }}, {{ assignedOrder1.curLon | number:'1.4-4' }}]</p>
+      <p>Destination: [{{ assignedOrder1.desLat | number:'1.4-4' }}, {{ assignedOrder1.desLon | number:'1.4-4' }}]</p>
+    </div>
+    <!-- <div class="update-form">
+      <label>New Current Latitude: <input type="number" [(ngModel)]="newCurLat" step="0.0001" min="-90" max="90"></label>
+      <label>New Current Longitude: <input type="number" [(ngModel)]="newCurLon" step="0.0001" min="-180" max="180"></label> -->
+      <button (click)="updateLocation(assignedOrder1.id)">Update Location</button>
+    <!-- </div> -->
+  </div>
+</div>
+</div>

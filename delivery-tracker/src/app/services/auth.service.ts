@@ -18,7 +18,7 @@ export class AuthService {
     refreshToken: '',
     expiresAt: new Date(),
     username: '',
-    roles: [],
+    role: [],
   };
   loginDetails = new BehaviorSubject<LoginResponse>(this.userModel);
   loginStatus = new BehaviorSubject<boolean>(false);
@@ -28,7 +28,7 @@ export class AuthService {
     refreshToken: '',
     expiresAt: new Date(),
     username: '',
-    roles: [],
+    role: [],
   };
 
   refreshTokenPayload = new BehaviorSubject<RefreshTokenPayload>({
@@ -53,7 +53,7 @@ export class AuthService {
         this.localstorage.store('username', data.username);
         this.localstorage.store('refreshToken', data.refreshToken);
         this.localstorage.store('expiresAt', data.expiresAt);
-        this.localstorage.store('roles', data.roles);
+        this.localstorage.store('roles', data.role);
         this.isLoggedIn().subscribe((d) => this.loggedInn.emit(d));
         this.username.emit(data.username);
         this.user.next(data);
@@ -94,6 +94,7 @@ export class AuthService {
     this.localstorage.clear('username');
     this.localstorage.clear('refreshToken');
     this.localstorage.clear('expiresAt');
+    this.localstorage.clear('roles');
     this.loggedInn.emit(false);
   }
 
@@ -109,6 +110,7 @@ export class AuthService {
           this.localstorage.store('authenticationToken', response.authenticationToken);
           this.localstorage.store('refreshToken', response.refreshToken);
           this.localstorage.store('expiresAt', response.expiresAt);
+          this.localstorage.store('roles', response.role);
           this.user.next(response);
         }),
         map(() => this.getJwtToken()),
@@ -132,6 +134,7 @@ export class AuthService {
         this.localstorage.store('authenticationToken', response.authenticationToken);
         this.localstorage.store('refreshToken', response.refreshToken);
         this.localstorage.store('expiresAt', response.expiresAt);
+        this.localstorage.store('roles', response.role);
         this.user.next(response);
       }),
       catchError((error: HttpErrorResponse) => {
