@@ -111,20 +111,41 @@ export class DeliveryService implements OnDestroy {
     }
   }
 
+  private getAuthHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      Authorization: `Bearer ${this.authService.getJwtToken()}`
+    });
+  }
+
+  // Fetch non-delivered orders
   getNonDeliveredOrders(): Observable<any> {
-    return this.http.get<any>(`${this.deliveryApi}/orders/non-delivered`);
+    return this.http.get<any>(`${this.deliveryApi}/orders/non-delivered`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
+  // Fetch orders assigned to a delivery user
   getAssignedOrders(username: string): Observable<any> {
-    return this.http.get<any>(`${this.deliveryApi}/orders/assigned/${username}`);
+    const username1 = this.authService.getUserName();
+    return this.http.get<any>(`${this.deliveryApi}/orders/${username}`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
+  // Assign an order to the logged-in delivery user
   assignOrder(orderId: string): Observable<any> {
-    const headers = new HttpHeaders({ Authorization: `Bearer ${this.authService.getJwtToken()}` });
     const username = this.authService.getUserName();
-    console.log('Assigning order:', orderId, 'to', username);
-    return this.http.put(`${this.deliveryApi}/assign/${orderId}/${username}`, {}, { headers });
+    return this.http.put(`${this.deliveryApi}/assign/${orderId}/${username}`, {}, {
+      headers: this.getAuthHeaders()
+    });
   }
+
+  updateLocation(orderId: string): Observable<any> {
+    const headers = new HttpHeaders({ Authorization: `Bearer ${this.authService.getJwtToken()}` });
+
+    return this.http.put(`${this.deliveryApi}/location`, { orderId }, { headers });
+  }
+
 
   addLocation(vehicleId: string, lat: number, lon: number, status: string): Observable<string> {
     return this.http.post<string>(this.deliveryApi, null, {
@@ -137,12 +158,6 @@ export class DeliveryService implements OnDestroy {
       })
     );
   }
-
-
-  updateOrderLocation(orderId: string): Observable<any> {
-    return this.http.put<any>(`${this.deliveryApi}/location`, orderId);
-  }
-
 
 
 private subscribeToLocationUpdates(orderId: string): void {

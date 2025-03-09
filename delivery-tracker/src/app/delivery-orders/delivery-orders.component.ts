@@ -69,7 +69,6 @@ export class DeliveryOrdersComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Failed to fetch orders', err);
-        alert('Failed to load orders. Please try again.');
       }
     });
   }
@@ -94,7 +93,6 @@ export class DeliveryOrdersComponent implements OnInit, OnDestroy {
   // Assign an order to the current user
   assignOrder(orderId: string): void {
     if (this.assignedOrder) {
-      alert('You already have an assigned order. Complete it first.');
       return;
     }
 
@@ -105,13 +103,12 @@ export class DeliveryOrdersComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Failed to assign order', err);
-        alert('Failed to assign order: ' + (err.error?.message || 'Unknown error'));
       }
     });
   }
   // Update the assigned order's location
   updateLocation($event:any): void {
-    this.deliveryService.updateOrderLocation($event).subscribe({
+    this.deliveryService.updateLocation($event).subscribe({
       next: (response) => console.log('Update location response:', response),
       error: (err) => console.error('Update location error:', err),
     });

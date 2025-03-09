@@ -5,23 +5,26 @@ import kafka.KafkaFullStack.Model.User;
 import kafka.KafkaFullStack.Repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 @AllArgsConstructor
 @Slf4j
-public class UserDetailsServiceImpl implements UserDetailsService {
+public class UserDetailsServiceImpl implements UserDetailsService, Converter<Jwt, Collection<GrantedAuthority>> {
 
     private final UserRepository userrepository;
 
@@ -51,17 +54,17 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
 
-//    @Override
-//    public Collection<GrantedAuthority> convert(Jwt jwt) {
-//        Collection<GrantedAuthority> authorities = defaultConverter.convert(jwt);
-//        Map<String, Object> claims = jwt.getClaims();
-//        if (claims.containsKey("scope") && claims.get("scope") instanceof String) {
-//            String scopes = (String) claims.get("scope");
-//            authorities.addAll(parseScopes(scopes));
-//        }
-//
-//        return authorities;
-//    }
+    @Override
+    public Collection<GrantedAuthority> convert(Jwt jwt) {
+        Collection<GrantedAuthority> authorities = defaultConverter.convert(jwt);
+        Map<String, Object> claims = jwt.getClaims();
+        if (claims.containsKey("scope") && claims.get("scope") instanceof String) {
+            String scopes = (String) claims.get("scope");
+            authorities.addAll(parseScopes(scopes));
+        }
+
+        return authorities;
+    }
 
     private Collection<GrantedAuthority> parseScopes(String scopes) {
         if (scopes.startsWith("ROLE_")) {

@@ -1,5 +1,6 @@
 package Delivery.Delivery.Controller;
 
+import Delivery.Delivery.Dto.LocationUpdateRequest;
 import Delivery.Delivery.Model.Order;
 import Delivery.Delivery.Model.User;
 import Delivery.Delivery.Repository.OrderRepository;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.json.JSONArray;
@@ -46,7 +48,8 @@ public class DeliveryController {
         return ResponseEntity.ok(orders);
     }
 
-    @GetMapping("/orders/assigned/{username}")
+    @GetMapping("/orders/{username}")
+    @PreAuthorize("hasAuthority('SCOPE_ROLE_DELIVERY')")
     public ResponseEntity<List<Order>> getAssignedOrders(@PathVariable String username) {
         List<Order> orders = orderRepository.findAll()
                 .stream()
@@ -56,6 +59,7 @@ public class DeliveryController {
     }
 
     @PutMapping("/assign/{orderId}/{username}")
+    @PreAuthorize("hasAuthority('SCOPE_ROLE_DELIVERY')")
     public ResponseEntity<String> assignOrder(@PathVariable String orderId, @PathVariable String username) {
         return orderRepository.findById(orderId)
                 .map(order -> {
@@ -76,7 +80,9 @@ public class DeliveryController {
 
     @Async
     @PutMapping("/location")
-    public ResponseEntity<String> updateLocation(@RequestBody String orderId) {
+    @PreAuthorize("hasAuthority('SCOPE_ROLE_DELIVERY')")
+    public ResponseEntity<String> updateLocation(@RequestBody LocationUpdateRequest request) {
+        String orderId = request.getOrderId();
         return orderRepository.findById(orderId).map(order -> {
             if ("Delivered".equals(order.getStatus())) {
                 return ResponseEntity.ok("Order already delivered: " + orderId);

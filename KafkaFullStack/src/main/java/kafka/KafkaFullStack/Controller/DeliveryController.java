@@ -7,11 +7,11 @@ import kafka.KafkaFullStack.Repository.OrderRepository;
 import kafka.KafkaFullStack.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/user")
@@ -48,6 +48,7 @@ public class DeliveryController {
     }
 
     @GetMapping("/orders/{orderId}")
+    @PreAuthorize("hasAuthority('SCOPE_ROLE_USER')")
     public ResponseEntity<Order> getOrderDetails(@PathVariable String orderId) {
         return orderRepository.findById(orderId)
                 .map(order -> {
@@ -61,6 +62,7 @@ public class DeliveryController {
     }
 
     @GetMapping("/orders/username/{username}")
+    @PreAuthorize("hasAuthority('SCOPE_ROLE_USER')")
     public ResponseEntity<List<Order>> getOrdersByUsername(@PathVariable String username) {
         List<Order> orders = orderRepository.findAllByCreator_username(username);
         orders.forEach(order -> {
@@ -75,6 +77,7 @@ public class DeliveryController {
 
 
     @PostMapping("/orders")
+    @PreAuthorize("hasAuthority('SCOPE_ROLE_USER')")
     public ResponseEntity<String> addOrder(@RequestBody OrderRequest orderRequest) {
         if (!userRepository.existsById(orderRequest.username())) {
             return ResponseEntity.badRequest().body("User " + orderRequest.username() + " not found");
@@ -112,15 +115,6 @@ public class DeliveryController {
         );
 
         return ResponseEntity.ok("Order " + order.getId() + " added with truck " + order.getTruckId());
-    }
-
-    @GetMapping("/orders/assigned/{username}")
-    public ResponseEntity<List<Order>> getAssignedOrders(@PathVariable String username) {
-        List<Order> orders = orderRepository.findAll()
-                .stream()
-                .filter(order -> (order.getAssignment().getUsername().equals(username)))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(orders);
     }
 
     record OrderRequest(String id, String username, String[] items, long creationDate, String truckId, Double desLat, Double desLon) {

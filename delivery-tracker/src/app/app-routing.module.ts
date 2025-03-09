@@ -8,25 +8,26 @@ import { UnauthorizedPageComponent } from './unauthorized-page/unauthorized-page
 import { SignupComponent } from './auth/signup/signup.component';
 import { HomeComponent } from './home/home.component';
 import { DeliveryOrdersComponent } from './delivery-orders/delivery-orders.component';
+import { AuthGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'signup', component: SignupComponent }, // ✅ Moved before wildcard
   { path: '', component: HomeComponent },
-  { path: 'delivery-order', component: DeliveryOrdersComponent },
+  { path: 'delivery-order', component: DeliveryOrdersComponent, canActivate: [AuthGuard], data: {
+    role: 'ROLE_DELIVERY',
+  }, },
   {
     path: 'profile',
     component: ProfileComponent
   },
-  // {
-  //   path: 'order-detail/:orderId',
-  //   component: OrderDetailComponent,
-  //   canActivate: [() => inject(AuthService).isLoggedIn()],
-  // },
   {
     path: 'tracker',
     component: TrackerComponent,
-    canActivate: [() => inject(AuthService).isLoggedIn()],
+    canActivate: [AuthGuard],
+    data: {
+      role: 'ROLE_USER',
+    },
   },
   { path: 'unauthorized', component: UnauthorizedPageComponent },
 ];
