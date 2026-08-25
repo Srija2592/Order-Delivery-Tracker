@@ -1,6 +1,6 @@
 from google.adk.agents import Agent
 from app.config import GEMINI_MODEL
-from app.tools.order_tools import get_order_status
+from app.tools.order_tools import get_order_status, calculate_eta, get_driver_location
 
 customer_agent = Agent(
     name="customer_support_agent",
@@ -43,6 +43,8 @@ Incorrect Responses:
 "Your order is finished."
 """,
     tools=[
-        get_order_status
+        get_order_status,
+        get_driver_location,
+        calculate_eta
     ]
 )
