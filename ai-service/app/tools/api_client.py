@@ -14,6 +14,10 @@ def get_auth_headers(context: Context):
     if not token:
         raise Exception("Authorization token not found in session state")
 
+    token = token.strip()
+    if not token.lower().startswith("bearer "):
+        token = f"Bearer {token}"
+
     return {
         "Authorization": token,
         "Content-Type": "application/json"

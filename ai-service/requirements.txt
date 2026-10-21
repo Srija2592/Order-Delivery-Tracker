@@ -1,5 +1,6 @@
 fastapi
 uvicorn
 google-adk
+sqlalchemy[asyncio]
 python-dotenv
 httpx
