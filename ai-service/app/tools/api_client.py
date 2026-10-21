@@ -1,8 +1,6 @@
 import requests
 from google.adk.agents.context import Context
-
-
-BASE_URL = "http://localhost:8080"
+from app.config import SPRING_BOOT_URL
 
 
 def get_auth_headers(context: Context):
@@ -26,7 +24,7 @@ def get_auth_headers(context: Context):
 
 def get_order(order_id: str, context: Context):
 
-    url = f"{BASE_URL}/api/user/orders/{order_id}"
+    url = f"{SPRING_BOOT_URL}/api/user/orders/{order_id}"
 
     headers = get_auth_headers(context)
 
