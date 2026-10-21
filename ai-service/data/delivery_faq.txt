@@ -1,0 +1,8 @@
+Q: How can I track my order?
+A: Provide your order ID to check its latest status and delivery information.
+
+Q: What if my order is delayed?
+A: Check the latest order status and estimated delivery time. If the order remains delayed, contact customer support.
+
+Q: Can I change my delivery address?
+A: Address changes depend on the order's current fulfillment status. Contact customer support to check whether a change is possible.

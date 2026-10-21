@@ -4,3 +4,5 @@ google-adk
 sqlalchemy[asyncio]
 python-dotenv
 httpx
+chromadb
+sentence-transformers

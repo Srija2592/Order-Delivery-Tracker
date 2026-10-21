@@ -1,0 +1,13 @@
+Delivery Policy
+
+1. Delivery estimates are approximate and may change due to weather,
+traffic, or fulfillment delays.
+
+2. Customers can check their order status using their order ID.
+
+3. A delivered order should be verified against the order's delivery status.
+
+4. Address changes are subject to fulfillment status and may not be
+possible after an order has shipped.
+
+5. For unresolved delivery issues, customers should contact support.
