@@ -1,370 +1,250 @@
 # Order Delivery Tracker
 
-A full-stack real-time order delivery tracking system built with **Spring Boot**, **Apache Kafka**, **MongoDB**, and **Angular**.
+A full-stack delivery tracking application built with **Java 17, Spring Boot, Angular, MongoDB, Apache Kafka, OpenSearch, and FastAPI/Gemini**.
 
-Users can place orders, delivery personnel can assign and fulfill them, and everyone can track orders live on a map with real-time location updates.
+The project supports order creation and assignment, live delivery-location tracking on a Leaflet map, asynchronous order-event indexing, and an AI assistant for order support and delivery-policy questions.
 
----
+## Architecture
 
-## Architecture Overview
+### Live delivery tracking
 
-```
-┌─────────────────────┐     Kafka (delivery-locations)     ┌─────────────────────┐
-│   KafkaFullStack    │ ◄─────────────────────────────────► │      Delivery        │
-│   (Port 8080)       │                                     │   (Port 8081)       │
-│                     │                                     │                     │
-│  • Auth (JWT)       │                                     │  • Assign orders    │
-│  • Create orders    │                                     │  • Live location    │
-│  • Track orders     │                                     │    simulation       │
-│  • User management  │                                     │  • OpenRouteService │
-└──────────┬──────────┘                                     └──────────┬──────────┘
-           │                                                           │
-           │              MongoDB Atlas (KafkaFullStack)               │
-           └───────────────────────────┬───────────────────────────────┘
-                                       │
-                          ┌────────────▼────────────┐
-                          │   delivery-tracker      │
-                          │   (Angular - Port 4200) │
-                          │                         │
-                          │  • Login / Signup       │
-                          │  • Order tracking map   │
-                          │  • Delivery dashboard   │
-                          │  • Real-time updates    │
-                          └─────────────────────────┘
-```
+\`\`\`text
+Delivery backend
+    -> Kafka: delivery-locations
+    -> Main backend location consumer
+    -> STOMP / WebSocket
+    -> Angular + Leaflet map
+\`\`\`
 
-### Event-driven order indexing (in progress)
+### Order events and search indexing
 
-The main backend is being extended with a transactional outbox for order lifecycle events. The intended flow is:
+\`\`\`text
+Create order
+    -> OrderService (@Transactional)
+       -> MongoDB orders collection
+       -> MongoDB outbox collection (ORDER_CREATED / PENDING)
+    -> Scheduled OutboxPublisher
+    -> Kafka: order-events
+    -> OrderEventConsumer
+    -> OpenSearch: orders index
+\`\`\`
 
-```
-Order creation
-     |
-     v
-OrderService (@Transactional)
-     |
-     +----> MongoDB orders collection
-     |
-     +----> MongoDB outbox collection (ORDER_CREATED, PENDING)
-                                      |
-                                      v
-                              Outbox Publisher
-                                      |
-                                      v
-                              Kafka: order-events
-                                      |
-                                      v
-                         Future search/indexing consumer
-                                      |
-                                      v
-                              OpenSearch (planned)
-```
+The two Kafka topics have separate responsibilities:
+- \`delivery-locations\`: frequent GPS/location messages used by the real-time map.
+- \`order-events\`: order lifecycle events used by downstream consumers, currently the OpenSearch indexer.
 
-The existing `delivery-locations` topic remains dedicated to frequent live-location updates and WebSocket delivery. The `order-events` topic is separate and intended for order lifecycle events such as `ORDER_CREATED`, `ORDER_ASSIGNED`, and `ORDER_STATUS_UPDATED`.
+### Services
 
-**Implementation status:** The MongoDB transaction configuration, order creation service, and outbox document/repository have been added. The scheduled publisher, Kafka consumer, and OpenSearch indexing integration are subsequent implementation steps; do not assume they are active until implemented and tested.
-
----
-
-## Tech Stack
-
-### Backend
-- **Java 17** + **Spring Boot 3.0.11**
-- **Spring Security** + JWT (OAuth2 Resource Server)
-- **Spring Data MongoDB**
-- **Spring Kafka**
-- **Lombok** + **MapStruct**
-- **OpenRouteService API** (route simulation)
-
-### Frontend
-- **Angular 15**
-- **Angular Material**
-- **Leaflet** + Marker Clustering (maps)
-- **STOMP over SockJS** (WebSocket)
-- **ngx-toastr** + **ngx-webstorage**
-
-### Infrastructure
-- **Apache Kafka** (topics: `delivery-locations`, `order-events` for the outbox event pipeline)
-- **MongoDB Atlas** (replica set; multi-document transactions used by the outbox write)
-- **OpenSearch** (planned for order search/indexing)
-
----
-
-## Project Structure
-
-```
-Order-Delivery-Tracker/
-├── KafkaFullStack/          # Main backend (Auth + User Orders) - Port 8080
-│   └── src/main/java/kafka/KafkaFullStack/
-│       ├── Configuration/   # MongoTransactionConfig
-│       ├── Controller/      # AuthController, DeliveryController, UserController
-│       ├── Dto/
-│       ├── Kafka/           # DeliveryProducer, DeliveryLocationConsumer, order events
-│       ├── Mapper/
-│       ├── Model/           # Order, User, Role, RefreshToken, OutboxEvent
-│       ├── Repository/      # OrderRepository, OutboxEventRepository
-│       ├── Security/
-│       └── Service/         # OrderService
-│
-├── Delivery/                # Delivery personnel backend - Port 8081
-│   └── src/main/java/Delivery/Delivery/
-│       ├── Configuration/
-│       ├── Controller/      # DeliveryController (assign + location update)
-│       ├── Dto/
-│       ├── Kafka/
-│       ├── Model/
-│       └── Repository/
-│
-└── delivery-tracker/        # Angular frontend - Port 4200
-    └── src/app/
-        ├── auth/            # Login, Signup, AuthGuard
-        ├── delivery-orders/ # Delivery agent dashboard
-        ├── header/
-        ├── home/
-        ├── models/
-        ├── profile/
-        ├── services/        # auth, delivery, user services
-        ├── tracker/         # Live map tracking
-        ├── unauthorized-page/
-        └── update/
-```
-
----
+| Component | Technology | Local port | Purpose |
+|---|---|---:|---|
+| Main backend | Spring Boot, Java 17, Spring Data MongoDB, Spring Kafka | 8080 | Auth, users, order creation and order APIs |
+| Delivery backend | Spring Boot, Java 17, Kafka | 8081 | Delivery assignment and location simulation |
+| Frontend | Angular, Leaflet, STOMP/SockJS | 4200 | Customer/delivery UI and live map |
+| AI service | FastAPI, Google ADK, Gemini, Chroma | 8000 | Conversational support, live order tools, FAQ/policy retrieval |
+| Kafka | Docker | 9092 | Event broker |
+| OpenSearch | Docker | 9200 | Order indexing and search foundation |
+| MongoDB | MongoDB Atlas | Cloud | Orders, users, and outbox persistence |
 
 ## Features
 
-### User Role (`ROLE_USER`)
-- Register / Login
-- Create new orders (with destination lat/lon)
-- View own orders
-- Live track order location on map
-- View distance to destination
+- JWT-based authentication and role-based user/delivery workflows.
+- Create and view orders; assign orders to delivery personnel.
+- Live delivery-location streaming through Kafka and STOMP/WebSocket.
+- Leaflet map for real-time location visualization.
+- Route simulation using OpenRouteService.
+- MongoDB Transactional Outbox for reliable persistence of order changes and event intent.
+- Scheduled publisher sends pending outbox events to Kafka topic \`order-events\`.
+- Kafka consumer indexes order-created events in OpenSearch.
+- OpenSearch \`orders\` index with explicit field mappings.
+- FastAPI AI service with Google ADK tools for live order support.
+- Chroma retrieval over delivery policy and FAQ documents.
 
-### Delivery Role (`ROLE_DELIVERY`)
-- View unassigned orders
-- Assign orders to self
-- Start delivery simulation (live location updates via Kafka)
-- View assigned orders
+## Technology stack
 
-### System
-- JWT-based authentication with refresh tokens
-- Real-time location streaming via Kafka
-- Route simulation using OpenRouteService
-- Haversine distance calculation
-- Role-based route guards on frontend
-- Transactional outbox write for order creation (MongoDB order + outbox event committed together)
+- **Backend:** Java 17, Spring Boot, Spring Data MongoDB, Spring Kafka, Spring Security, WebSocket/STOMP, Gradle.
+- **Frontend:** Angular, TypeScript, Angular Material, Leaflet, SockJS, STOMP.
+- **Messaging/search:** Apache Kafka, OpenSearch Java client.
+- **Data:** MongoDB Atlas.
+- **AI:** Python 3.11+, FastAPI, Google ADK, Gemini, Chroma, sentence-transformers.
 
----
+## Repository structure
 
-## Prerequisites
+\`\`\`text
+Order-Delivery-Tracker/
+├── KafkaFullStack/       # Main Spring Boot backend (8080)
+├── Delivery/             # Delivery Spring Boot backend (8081)
+├── delivery-tracker/     # Angular frontend (4200)
+├── ai-service/           # FastAPI + Google ADK service (8000)
+└── docs/
+    └── DEVELOPMENT_GUIDE.md
+\`\`\`
 
-- **Java 17+**
-- **Node.js 16+** & **npm**
-- **Docker** (if running the local Kafka container described below)
-- **Apache Kafka** reachable at `localhost:9092`
-- **MongoDB Atlas** replica set (or another MongoDB replica set / sharded deployment that supports transactions)
-- **OpenRouteService** API key (free tier available)
+## Quick start (Windows PowerShell)
 
----
+### 1. Clone
 
-## Getting Started
-
-### 1. Clone the Repository
-
-```bash
+\`\`\`powershell
 git clone https://github.com/Srija2592/Order-Delivery-Tracker.git
 cd Order-Delivery-Tracker
-```
+\`\`\`
 
-### 2. Start Kafka and create topics
+### 2. Start infrastructure
 
-Make sure Kafka is running and reachable at `localhost:9092`.
+Start Docker Desktop, then start the existing local containers:
 
-The project uses two separate topics:
-- `delivery-locations`: frequent delivery location updates used by the live tracking flow.
-- `order-events`: order lifecycle events published from the transactional outbox (publisher implementation is a subsequent step).
+\`\`\`powershell
+docker start kafka
+docker start opensearch
+docker ps
+\`\`\`
 
-If Kafka is running in Docker with a container named `kafka`, list existing topics:
+If a container has not been created yet, follow the first-time setup commands in the [Local Development Guide](docs/DEVELOPMENT_GUIDE.md).
 
-```cmd
+Check Kafka topics:
+
+\`\`\`powershell
 docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --list
-```
+\`\`\`
 
-Create the topics if they do not already exist:
+Create topics only if they do not already exist:
 
-```cmd
-docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic delivery-locations --partitions 1 --replication-factor 1
+\`\`\`powershell
+docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic delivery-locations --partitions 3 --replication-factor 1
 docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic order-events --partitions 3 --replication-factor 1
-```
+\`\`\`
 
-If you installed Kafka directly, use the `kafka-topics.sh` command from your Kafka installation's `bin` directory instead of `docker exec`.
+Check OpenSearch:
 
-To verify a topic:
+\`\`\`powershell
+curl.exe http://localhost:9200
+\`\`\`
 
-```cmd
-docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic order-events
-```
+### 3. Resume MongoDB Atlas if paused
 
-For a single-node local Kafka broker, replication factor `1` is appropriate for development. Use a production-appropriate replication factor and broker configuration in deployed environments.
+Open the [MongoDB Atlas project](https://cloud.mongodb.com/v2/6778177b3a3c2a6560ccbc2e#/overview), open the cluster, and choose **Resume** if the cluster is paused. Wait until it is ready. Confirm Network Access and your local connection string.
 
-### 3. Configure Backend Services
+### 4. Run the main backend
 
-Update the MongoDB URI and other properties if needed:
-
-**KafkaFullStack** → `src/main/resources/application.properties`  
-**Delivery** → `src/main/resources/application.properties`
-
-```properties
-spring.data.mongodb.uri=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/KafkaFullStack?retryWrites=true&w=majority
-spring.kafka.bootstrap-servers=localhost:9092
-server.port=8080   # or 8081 for Delivery service
-```
-
-> **MongoDB transaction requirement:** The transactional outbox writes the order and its outbox event in one transaction. MongoDB multi-document transactions require a replica set or sharded cluster; a standalone MongoDB server is not sufficient. In the main backend, `MongoTransactionConfig` provides a `MongoTransactionManager`, and `OrderService.createOrder()` is annotated with `@Transactional`.
-
-> **Note:** The Delivery service also requires an OpenRouteService API key:
-> ```properties
-> openrouteservice.api.key=YOUR_API_KEY
-> ```
-
-Do not commit database passwords, Kafka credentials, JWT private keys, or API keys. Supply secrets through environment variables or a secrets manager.
-
-### 4. Run Backend Services
-
-```bash
-# Terminal 1 - Main Backend
+\`\`\`powershell
 cd KafkaFullStack
-./gradlew bootRun
+.\gradlew.bat bootRun
+\`\`\`
 
-# Terminal 2 - Delivery Service
+### 5. Run the delivery backend
+
+In a separate terminal:
+
+\`\`\`powershell
 cd Delivery
-./gradlew bootRun
-```
+.\gradlew.bat bootRun
+\`\`\`
 
-### 5. Run Frontend
+### 6. Run Angular
 
-```bash
+In a separate terminal:
+
+\`\`\`powershell
 cd delivery-tracker
 npm install
-ng serve
-```
+npx ng serve
+\`\`\`
 
-Open [http://localhost:4200](http://localhost:4200)
+Open [http://localhost:4200](http://localhost:4200).
 
----
+### 7. Run the AI service (optional)
 
-## API Endpoints (Overview)
+Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/api-keys). From the \`ai-service\` directory:
 
-### KafkaFullStack (Port 8080)
+\`\`\`powershell
+py -3.11 -m venv .venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+\`\`\`
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/auth/signup` | Register user | Public |
-| POST | `/api/auth/login` | Login | Public |
-| POST | `/api/user/orders` | Create order | `ROLE_USER` |
-| GET | `/api/user/orders/username/{username}` | Get user orders | `ROLE_USER` |
-| GET | `/api/user/track/{orderId}` | Track order + distance | Public/User |
-| GET | `/api/user/orders/{orderId}` | Get order details | `ROLE_USER` |
+Create \`.env\` in \`ai-service\`:
 
-### Delivery Service (Port 8081)
+\`\`\`dotenv
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=your-supported-gemini-model
+ORDER_SERVICE_URL=http://localhost:8080
+\`\`\`
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/deliveries/orders/non-delivered` | List unassigned orders | Public |
-| GET | `/api/deliveries/orders/{username}` | Get assigned orders | `ROLE_DELIVERY` |
-| PUT | `/api/deliveries/assign/{orderId}/{username}` | Assign order | `ROLE_DELIVERY` |
-| PUT | `/api/deliveries/location` | Start location simulation | `ROLE_DELIVERY` |
+Start FastAPI:
 
----
+\`\`\`powershell
+python -m uvicorn app.main:app --reload
+\`\`\`
 
-## Order Lifecycle
+If activation is unavailable, run:
 
-1. **User** creates an order → status: `In Transit`.
-2. **KafkaFullStack OrderService** saves the order and an `ORDER_CREATED` outbox event in the same MongoDB transaction. The outbox event starts with status `PENDING`.
-3. **Outbox publisher (planned)** will publish pending lifecycle events to Kafka topic `order-events` and then mark them `PUBLISHED`.
-4. **Delivery agent** assigns the order → status: `Shipped`.
-5. **Delivery agent** starts location update → Kafka streams coordinates every ~5 seconds on `delivery-locations`.
-6. Frontend receives location updates via WebSocket/STOMP and updates the Leaflet map.
-7. When destination is reached → status: `Delivered`.
+\`\`\`powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+\`\`\`
 
----
+AI API docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-## Transactional Outbox
+## Transactional Outbox and OpenSearch
 
-The outbox pattern prevents the order database write and event publication intent from becoming two unrelated operations.
+When an order is created, \`OrderService.createOrder()\` writes the order and an \`ORDER_CREATED\` event to MongoDB in the same transaction. The outbox record starts as \`PENDING\`.
 
-When an order is created, `OrderService.createOrder()` performs these operations under `@Transactional`:
+The scheduled \`OutboxPublisher\` polls pending events every five seconds, publishes each payload to \`order-events\`, and marks it \`PUBLISHED\` after Kafka acknowledges the send. \`OrderEventConsumer\` reads the JSON event and indexes it in OpenSearch. The \`OrderIndexService\` creates the \`orders\` index and mappings when missing.
 
-1. Saves the order in the `orders` collection.
-2. Creates an `ORDER_CREATED` event containing the order details.
-3. Saves the event in the `outbox` collection with status `PENDING`.
+Useful verification commands:
 
-The `MongoTransactionConfig` class configures Spring Data MongoDB's `MongoTransactionManager`. Both writes commit or roll back together, provided the MongoDB deployment supports transactions.
+\`\`\`powershell
+# Topics
+docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --list
 
-The next component is an outbox publisher that polls pending events and sends them to Kafka. Because a process can fail after Kafka acknowledges a message but before MongoDB records it as published, duplicate publication is possible. Downstream consumers should therefore be idempotent. Publisher retry handling, safe concurrent claiming, a dead-letter strategy, and the consumer are follow-up implementation work.
+# Topic details
+docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic order-events
 
----
+# OpenSearch index and mapping
+curl.exe http://localhost:9200/_cat/indices?v
+curl.exe "http://localhost:9200/orders/_mapping?pretty"
 
-## Roles
+# Fetch an indexed order
+curl.exe "http://localhost:9200/orders/_doc/ORDER_ID?pretty"
+\`\`\`
 
-```java
-public enum Role {
-    USER,       // Customers who place & track orders
-    DELIVERY,   // Delivery personnel
-    ADMIN       // Reserved
-}
-```
+Indexing is asynchronous. Check the Spring Boot logs if the document is not visible immediately.
 
----
+### Current implementation notes
 
-## Frontend Routes
+- MongoDB transactions require Atlas/replica-set transaction support.
+- The current outbox publisher is a basic scheduled poller; it does not yet implement distributed event claiming for multiple backend instances.
+- A crash after Kafka acknowledges an event but before the outbox status is updated can lead to republishing.
+- The consumer uses \`orderId\` as the OpenSearch document ID, so repeated indexing of the same create event overwrites the same document.
+- A production-ready version should add bounded retries, safe multi-instance claiming, event versioning/ordering, explicit idempotency, monitoring, and a dead-letter topic/recovery flow. A DLQ is not currently configured.
 
-| Path | Component | Guard |
-|------|-----------|-------|
-| `/` | Home | - |
-| `/login` | Login | - |
-| `/signup` | Signup | - |
-| `/tracker` | Live Order Tracker | `ROLE_USER` |
-| `/delivery-order` | Delivery Dashboard | `ROLE_DELIVERY` |
-| `/profile` | User Profile | - |
-| `/unauthorized` | Unauthorized Page | - |
+## API overview
 
----
+The main backend exposes authentication and user/order APIs under \`/api/auth\` and \`/api/user\`. The delivery backend exposes delivery assignment and location APIs under \`/api/deliveries\`. See the controllers and each service's local API configuration for the exact route/security details.
 
-## Important Notes
+The AI service exposes:
+- \`GET /health\`
+- \`POST /chat\`
+- Interactive Swagger docs at \`/docs\`
 
-- Default source location for new orders is set to **Hyderabad** (17.4065, 78.4772).
-- Location simulation uses the **OpenRouteService Directions API**.
-- Kafka message format for location updates:
-  ```
-  orderId:srcLat:srcLon:curLat:curLon:desLat:desLon:status:timestamp
-  ```
-- JWT public/private keys are expected in the classpath (`app.pub` / `app.key`).
-- The live location topic (`delivery-locations`) and lifecycle event topic (`order-events`) serve different purposes; do not merge their message formats or responsibilities.
+## Security
 
----
+- Never commit MongoDB credentials, Kafka credentials, Gemini/OpenRouteService API keys, JWT private keys, or local \`.env\` files.
+- Use environment variables or a secrets manager for local/deployed configuration.
+- Rotate credentials that have previously been committed or exposed, then remove the hardcoded values from tracked configuration and Git history as appropriate.
+- The documented OpenSearch container disables its security plugin for local-only development. Do not expose it publicly or use that setting in production.
 
-## Future Improvements
+## Detailed documentation
 
-- [ ] Complete and test the scheduled Outbox Publisher
-- [ ] Add Kafka consumer for order lifecycle events
-- [ ] Add OpenSearch indexing and order search API
-- [ ] Add bounded retries, idempotency, event versioning, and dead-letter handling
-- [ ] Add Admin dashboard
-- [ ] Real GPS integration instead of simulation
-- [ ] Push notifications
-- [ ] Order history & analytics
-- [ ] Docker Compose setup (Kafka + MongoDB + services)
-- [ ] Unit & integration tests
-
----
-
-## Author
-
-**Srija2592**
-
----
+See **[docs/DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)** for:
+- Environment setup and Windows PowerShell commands.
+- Kafka topic management and console tools.
+- OpenSearch Docker startup, index verification, and mappings.
+- MongoDB Atlas resume/setup.
+- Transactional Outbox design and delivery guarantees.
+- AI service virtual environment, Gemini key, and FastAPI startup.
+- End-to-end verification and troubleshooting.
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
+See [LICENSE](LICENSE).
