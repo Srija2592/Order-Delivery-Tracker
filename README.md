@@ -33,6 +33,37 @@ Users can place orders, delivery personnel can assign and fulfill them, and ever
                           └─────────────────────────┘
 ```
 
+### Event-driven order indexing (in progress)
+
+The main backend is being extended with a transactional outbox for order lifecycle events. The intended flow is:
+
+```
+Order creation
+     |
+     v
+OrderService (@Transactional)
+     |
+     +----> MongoDB orders collection
+     |
+     +----> MongoDB outbox collection (ORDER_CREATED, PENDING)
+                                      |
+                                      v
+                              Outbox Publisher
+                                      |
+                                      v
+                              Kafka: order-events
+                                      |
+                                      v
+                         Future search/indexing consumer
+                                      |
+                                      v
+                              OpenSearch (planned)
+```
+
+The existing `delivery-locations` topic remains dedicated to frequent live-location updates and WebSocket delivery. The `order-events` topic is separate and intended for order lifecycle events such as `ORDER_CREATED`, `ORDER_ASSIGNED`, and `ORDER_STATUS_UPDATED`.
+
+**Implementation status:** The MongoDB transaction configuration, order creation service, and outbox document/repository have been added. The scheduled publisher, Kafka consumer, and OpenSearch indexing integration are subsequent implementation steps; do not assume they are active until implemented and tested.
+
 ---
 
 ## Tech Stack
@@ -53,8 +84,9 @@ Users can place orders, delivery personnel can assign and fulfill them, and ever
 - **ngx-toastr** + **ngx-webstorage**
 
 ### Infrastructure
-- **Apache Kafka** (topic: `delivery-locations`)
-- **MongoDB Atlas**
+- **Apache Kafka** (topics: `delivery-locations`, `order-events` for the outbox event pipeline)
+- **MongoDB Atlas** (replica set; multi-document transactions used by the outbox write)
+- **OpenSearch** (planned for order search/indexing)
 
 ---
 
@@ -64,15 +96,15 @@ Users can place orders, delivery personnel can assign and fulfill them, and ever
 Order-Delivery-Tracker/
 ├── KafkaFullStack/          # Main backend (Auth + User Orders) - Port 8080
 │   └── src/main/java/kafka/KafkaFullStack/
-│       ├── Configuration/
+│       ├── Configuration/   # MongoTransactionConfig
 │       ├── Controller/      # AuthController, DeliveryController, UserController
 │       ├── Dto/
-│       ├── Kafka/           # DeliveryProducer, DeliveryLocationConsumer
+│       ├── Kafka/           # DeliveryProducer, DeliveryLocationConsumer, order events
 │       ├── Mapper/
-│       ├── Model/           # Order, User, Role, RefreshToken
-│       ├── Repository/
+│       ├── Model/           # Order, User, Role, RefreshToken, OutboxEvent
+│       ├── Repository/      # OrderRepository, OutboxEventRepository
 │       ├── Security/
-│       └── Service/
+│       └── Service/         # OrderService
 │
 ├── Delivery/                # Delivery personnel backend - Port 8081
 │   └── src/main/java/Delivery/Delivery/
@@ -120,6 +152,7 @@ Order-Delivery-Tracker/
 - Route simulation using OpenRouteService
 - Haversine distance calculation
 - Role-based route guards on frontend
+- Transactional outbox write for order creation (MongoDB order + outbox event committed together)
 
 ---
 
@@ -127,8 +160,9 @@ Order-Delivery-Tracker/
 
 - **Java 17+**
 - **Node.js 16+** & **npm**
-- **Apache Kafka** running on `localhost:9092`
-- **MongoDB Atlas** account (or local MongoDB)
+- **Docker** (if running the local Kafka container described below)
+- **Apache Kafka** reachable at `localhost:9092`
+- **MongoDB Atlas** replica set (or another MongoDB replica set / sharded deployment that supports transactions)
 - **OpenRouteService** API key (free tier available)
 
 ---
@@ -142,15 +176,36 @@ git clone https://github.com/Srija2592/Order-Delivery-Tracker.git
 cd Order-Delivery-Tracker
 ```
 
-### 2. Start Kafka
+### 2. Start Kafka and create topics
 
-Make sure Kafka is running locally:
+Make sure Kafka is running and reachable at `localhost:9092`.
 
-```bash
-# Example with Kafka in KRaft mode or Zookeeper
-# Create the required topic
-kafka-topics.sh --create --topic delivery-locations --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+The project uses two separate topics:
+- `delivery-locations`: frequent delivery location updates used by the live tracking flow.
+- `order-events`: order lifecycle events published from the transactional outbox (publisher implementation is a subsequent step).
+
+If Kafka is running in Docker with a container named `kafka`, list existing topics:
+
+```cmd
+docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --list
 ```
+
+Create the topics if they do not already exist:
+
+```cmd
+docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic delivery-locations --partitions 1 --replication-factor 1
+docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic order-events --partitions 3 --replication-factor 1
+```
+
+If you installed Kafka directly, use the `kafka-topics.sh` command from your Kafka installation's `bin` directory instead of `docker exec`.
+
+To verify a topic:
+
+```cmd
+docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic order-events
+```
+
+For a single-node local Kafka broker, replication factor `1` is appropriate for development. Use a production-appropriate replication factor and broker configuration in deployed environments.
 
 ### 3. Configure Backend Services
 
@@ -165,10 +220,14 @@ spring.kafka.bootstrap-servers=localhost:9092
 server.port=8080   # or 8081 for Delivery service
 ```
 
+> **MongoDB transaction requirement:** The transactional outbox writes the order and its outbox event in one transaction. MongoDB multi-document transactions require a replica set or sharded cluster; a standalone MongoDB server is not sufficient. In the main backend, `MongoTransactionConfig` provides a `MongoTransactionManager`, and `OrderService.createOrder()` is annotated with `@Transactional`.
+
 > **Note:** The Delivery service also requires an OpenRouteService API key:
 > ```properties
 > openrouteservice.api.key=YOUR_API_KEY
 > ```
+
+Do not commit database passwords, Kafka credentials, JWT private keys, or API keys. Supply secrets through environment variables or a secrets manager.
 
 ### 4. Run Backend Services
 
@@ -220,11 +279,29 @@ Open [http://localhost:4200](http://localhost:4200)
 
 ## Order Lifecycle
 
-1. **User** creates an order → status: `In Transit`
-2. **Delivery agent** assigns the order → status: `Shipped`
-3. **Delivery agent** starts location update → Kafka streams coordinates every ~5 seconds
-4. Frontend receives updates via WebSocket/STOMP and updates the Leaflet map
-5. When destination is reached → status: `Delivered`
+1. **User** creates an order → status: `In Transit`.
+2. **KafkaFullStack OrderService** saves the order and an `ORDER_CREATED` outbox event in the same MongoDB transaction. The outbox event starts with status `PENDING`.
+3. **Outbox publisher (planned)** will publish pending lifecycle events to Kafka topic `order-events` and then mark them `PUBLISHED`.
+4. **Delivery agent** assigns the order → status: `Shipped`.
+5. **Delivery agent** starts location update → Kafka streams coordinates every ~5 seconds on `delivery-locations`.
+6. Frontend receives location updates via WebSocket/STOMP and updates the Leaflet map.
+7. When destination is reached → status: `Delivered`.
+
+---
+
+## Transactional Outbox
+
+The outbox pattern prevents the order database write and event publication intent from becoming two unrelated operations.
+
+When an order is created, `OrderService.createOrder()` performs these operations under `@Transactional`:
+
+1. Saves the order in the `orders` collection.
+2. Creates an `ORDER_CREATED` event containing the order details.
+3. Saves the event in the `outbox` collection with status `PENDING`.
+
+The `MongoTransactionConfig` class configures Spring Data MongoDB's `MongoTransactionManager`. Both writes commit or roll back together, provided the MongoDB deployment supports transactions.
+
+The next component is an outbox publisher that polls pending events and sends them to Kafka. Because a process can fail after Kafka acknowledges a message but before MongoDB records it as published, duplicate publication is possible. Downstream consumers should therefore be idempotent. Publisher retry handling, safe concurrent claiming, a dead-letter strategy, and the consumer are follow-up implementation work.
 
 ---
 
@@ -263,11 +340,16 @@ public enum Role {
   orderId:srcLat:srcLon:curLat:curLon:desLat:desLon:status:timestamp
   ```
 - JWT public/private keys are expected in the classpath (`app.pub` / `app.key`).
+- The live location topic (`delivery-locations`) and lifecycle event topic (`order-events`) serve different purposes; do not merge their message formats or responsibilities.
 
 ---
 
 ## Future Improvements
 
+- [ ] Complete and test the scheduled Outbox Publisher
+- [ ] Add Kafka consumer for order lifecycle events
+- [ ] Add OpenSearch indexing and order search API
+- [ ] Add bounded retries, idempotency, event versioning, and dead-letter handling
 - [ ] Add Admin dashboard
 - [ ] Real GPS integration instead of simulation
 - [ ] Push notifications
