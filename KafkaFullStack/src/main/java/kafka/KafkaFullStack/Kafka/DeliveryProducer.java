@@ -91,21 +91,25 @@ public class DeliveryProducer {
         locationUpdateFlags.put(orderId, false);
     }
 
-    public void addNewOrder(String orderId, Double srcLat, Double srcLon, Double curLat, Double curLon, Double desLat, Double desLon, String status) {
-        orderDetails.put(orderId, new OrderDetails(srcLat, srcLon, curLat, curLon, desLat, desLon, status));
-        sendLocation(orderId, srcLat, srcLon, curLat, curLon,desLat, desLon, status);
-
-        orderRepository.findById(orderId).ifPresentOrElse(order -> {
-            order.setSrcLat(srcLat);
-            order.setSrcLon(srcLon);
-            order.setCurLat(curLat);
-            order.setCurLon(curLon);
-            order.setDesLat(desLat);
-            order.setDesLon(desLon);
-            order.setStatus(status);
-            orderRepository.save(order);
-        }, () -> {
-            throw new IllegalStateException("Order not found for ID: " + orderId);
-        });
+    public void addNewOrder(
+            String orderId,
+            Double srcLat,
+            Double srcLon,
+            Double curLat,
+            Double curLon,
+            Double desLat,
+            Double desLon,
+            String status
+    ) {
+        sendLocation(
+                orderId,
+                srcLat,
+                srcLon,
+                curLat,
+                curLon,
+                desLat,
+                desLon,
+                status
+        );
     }
 }

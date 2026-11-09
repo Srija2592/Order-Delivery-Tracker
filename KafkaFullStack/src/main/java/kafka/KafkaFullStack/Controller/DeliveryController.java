@@ -1,10 +1,15 @@
 package kafka.KafkaFullStack.Controller;
 
 import kafka.KafkaFullStack.Kafka.DeliveryProducer;
+import kafka.KafkaFullStack.Kafka.OrderCreatedEvent;
 import kafka.KafkaFullStack.Model.Order;
+import kafka.KafkaFullStack.Model.OutboxEvent;
 import kafka.KafkaFullStack.Model.User;
 import kafka.KafkaFullStack.Repository.OrderRepository;
+import kafka.KafkaFullStack.Repository.OutboxEventRepository;
 import kafka.KafkaFullStack.Repository.UserRepository;
+import kafka.KafkaFullStack.Service.OrderService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,22 +18,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
+import static org.springframework.data.mongodb.util.BsonUtils.toJson;
+
 @RestController
 @RequestMapping("/api/user")
 @Validated
+@RequiredArgsConstructor
 public class DeliveryController {
     private final DeliveryProducer deliveryProducer;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
 
-
-    @Autowired
-    public DeliveryController(DeliveryProducer deliveryProducer, OrderRepository orderRepository, UserRepository userRepository) {
-        this.deliveryProducer = deliveryProducer;
-        this.orderRepository = orderRepository;
-        this.userRepository = userRepository;
-    }
-
+    private final OutboxEventRepository outboxEventRepository;
+    private final OrderService orderService;
 
 
     @GetMapping("/track/{orderId}")
@@ -78,16 +80,22 @@ public class DeliveryController {
 
     @PostMapping("/orders")
     @PreAuthorize("hasAuthority('SCOPE_ROLE_USER')")
-    public ResponseEntity<String> addOrder(@RequestBody OrderRequest orderRequest) {
+    public ResponseEntity<String> addOrder(
+            @RequestBody OrderRequest orderRequest) {
+
         if (!userRepository.existsById(orderRequest.username())) {
-            return ResponseEntity.badRequest().body("User " + orderRequest.username() + " not found");
+            return ResponseEntity.badRequest()
+                    .body("User " + orderRequest.username() + " not found");
         }
 
-        User user = userRepository.findByUsername(orderRequest.username()).orElseThrow();
+        User user = userRepository.findByUsername(
+                orderRequest.username()
+        ).orElseThrow();
+
         Order order = new Order(
                 orderRequest.id(),
                 orderRequest.items(),
-                "In Transit", // Initial status set to "In Transit"
+                "In Transit",
                 orderRequest.creationDate(),
                 orderRequest.truckId(),
                 orderRequest.desLat(),
@@ -95,26 +103,20 @@ public class DeliveryController {
         );
 
         order.setCreator(user);
-        // Set initial location to Hyderabad
+
+        // Initial location: Hyderabad
         order.setSrcLat(17.4065);
         order.setSrcLon(78.4772);
         order.setCurLat(17.4065);
         order.setCurLon(78.4772);
-        orderRepository.save(order);
 
-        // Add to Kafka simulation
-        deliveryProducer.addNewOrder(
-                order.getId(),
-                order.getSrcLat(),
-                order.getSrcLon(),
-                order.getCurLat(),
-                order.getCurLon(),
-                order.getDesLat(),
-                order.getDesLon(),
-                order.getStatus()
+        // Delegate order and outbox persistence to OrderService
+        Order savedOrder = orderService.createOrder(order);
+
+        return ResponseEntity.ok(
+                "Order " + savedOrder.getId() + " added with truck "
+                        + savedOrder.getTruckId()
         );
-
-        return ResponseEntity.ok("Order " + order.getId() + " added with truck " + order.getTruckId());
     }
 
     record OrderRequest(String id, String username, String[] items, long creationDate, String truckId, Double desLat, Double desLon) {
