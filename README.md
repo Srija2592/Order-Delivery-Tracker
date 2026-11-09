@@ -8,17 +8,17 @@ The project supports order creation and assignment, live delivery-location track
 
 ### Live delivery tracking
 
-\`\`\`text
+```text
 Delivery backend
     -> Kafka: delivery-locations
     -> Main backend location consumer
     -> STOMP / WebSocket
     -> Angular + Leaflet map
-\`\`\`
+```
 
 ### Order events and search indexing
 
-\`\`\`text
+```text
 Create order
     -> OrderService (@Transactional)
        -> MongoDB orders collection
@@ -27,11 +27,11 @@ Create order
     -> Kafka: order-events
     -> OrderEventConsumer
     -> OpenSearch: orders index
-\`\`\`
+```
 
 The two Kafka topics have separate responsibilities:
-- \`delivery-locations\`: frequent GPS/location messages used by the real-time map.
-- \`order-events\`: order lifecycle events used by downstream consumers, currently the OpenSearch indexer.
+- `delivery-locations`: frequent GPS/location messages used by the real-time map.
+- `order-events`: order lifecycle events used by downstream consumers, currently the OpenSearch indexer.
 
 ### Services
 
@@ -53,9 +53,9 @@ The two Kafka topics have separate responsibilities:
 - Leaflet map for real-time location visualization.
 - Route simulation using OpenRouteService.
 - MongoDB Transactional Outbox for reliable persistence of order changes and event intent.
-- Scheduled publisher sends pending outbox events to Kafka topic \`order-events\`.
+- Scheduled publisher sends pending outbox events to Kafka topic `order-events`.
 - Kafka consumer indexes order-created events in OpenSearch.
-- OpenSearch \`orders\` index with explicit field mappings.
+- OpenSearch `orders` index with explicit field mappings.
 - FastAPI AI service with Google ADK tools for live order support.
 - Chroma retrieval over delivery policy and FAQ documents.
 
@@ -69,7 +69,7 @@ The two Kafka topics have separate responsibilities:
 
 ## Repository structure
 
-\`\`\`text
+```text
 Order-Delivery-Tracker/
 ├── KafkaFullStack/       # Main Spring Boot backend (8080)
 ├── Delivery/             # Delivery Spring Boot backend (8081)
@@ -77,47 +77,47 @@ Order-Delivery-Tracker/
 ├── ai-service/           # FastAPI + Google ADK service (8000)
 └── docs/
     └── DEVELOPMENT_GUIDE.md
-\`\`\`
+```
 
 ## Quick start (Windows PowerShell)
 
 ### 1. Clone
 
-\`\`\`powershell
+```powershell
 git clone https://github.com/Srija2592/Order-Delivery-Tracker.git
 cd Order-Delivery-Tracker
-\`\`\`
+```
 
 ### 2. Start infrastructure
 
 Start Docker Desktop, then start the existing local containers:
 
-\`\`\`powershell
+```powershell
 docker start kafka
 docker start opensearch
 docker ps
-\`\`\`
+```
 
 If a container has not been created yet, follow the first-time setup commands in the [Local Development Guide](docs/DEVELOPMENT_GUIDE.md).
 
 Check Kafka topics:
 
-\`\`\`powershell
+```powershell
 docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --list
-\`\`\`
+```
 
 Create topics only if they do not already exist:
 
-\`\`\`powershell
+```powershell
 docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic delivery-locations --partitions 3 --replication-factor 1
 docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic order-events --partitions 3 --replication-factor 1
-\`\`\`
+```
 
 Check OpenSearch:
 
-\`\`\`powershell
+```powershell
 curl.exe http://localhost:9200
-\`\`\`
+```
 
 ### 3. Resume MongoDB Atlas if paused
 
@@ -125,75 +125,75 @@ Open the [MongoDB Atlas project](https://cloud.mongodb.com/v2/6778177b3a3c2a6560
 
 ### 4. Run the main backend
 
-\`\`\`powershell
+```powershell
 cd KafkaFullStack
 .\gradlew.bat bootRun
-\`\`\`
+```
 
 ### 5. Run the delivery backend
 
 In a separate terminal:
 
-\`\`\`powershell
+```powershell
 cd Delivery
 .\gradlew.bat bootRun
-\`\`\`
+```
 
 ### 6. Run Angular
 
 In a separate terminal:
 
-\`\`\`powershell
+```powershell
 cd delivery-tracker
 npm install
 npx ng serve
-\`\`\`
+```
 
 Open [http://localhost:4200](http://localhost:4200).
 
 ### 7. Run the AI service (optional)
 
-Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/api-keys). From the \`ai-service\` directory:
+Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/api-keys). From the `ai-service` directory:
 
-\`\`\`powershell
+```powershell
 py -3.11 -m venv .venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-\`\`\`
+```
 
-Create \`.env\` in \`ai-service\`:
+Create `.env` in `ai-service`:
 
-\`\`\`dotenv
+```dotenv
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=your-supported-gemini-model
 ORDER_SERVICE_URL=http://localhost:8080
-\`\`\`
+```
 
 Start FastAPI:
 
-\`\`\`powershell
+```powershell
 python -m uvicorn app.main:app --reload
-\`\`\`
+```
 
 If activation is unavailable, run:
 
-\`\`\`powershell
+```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
-\`\`\`
+```
 
 AI API docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
 ## Transactional Outbox and OpenSearch
 
-When an order is created, \`OrderService.createOrder()\` writes the order and an \`ORDER_CREATED\` event to MongoDB in the same transaction. The outbox record starts as \`PENDING\`.
+When an order is created, `OrderService.createOrder()` writes the order and an `ORDER_CREATED` event to MongoDB in the same transaction. The outbox record starts as `PENDING`.
 
-The scheduled \`OutboxPublisher\` polls pending events every five seconds, publishes each payload to \`order-events\`, and marks it \`PUBLISHED\` after Kafka acknowledges the send. \`OrderEventConsumer\` reads the JSON event and indexes it in OpenSearch. The \`OrderIndexService\` creates the \`orders\` index and mappings when missing.
+The scheduled `OutboxPublisher` polls pending events every five seconds, publishes each payload to `order-events`, and marks it `PUBLISHED` after Kafka acknowledges the send. `OrderEventConsumer` reads the JSON event and indexes it in OpenSearch. The `OrderIndexService` creates the `orders` index and mappings when missing.
 
 Useful verification commands:
 
-\`\`\`powershell
+```powershell
 # Topics
 docker exec -it kafka kafka-topics.sh --bootstrap-server localhost:9092 --list
 
@@ -206,7 +206,7 @@ curl.exe "http://localhost:9200/orders/_mapping?pretty"
 
 # Fetch an indexed order
 curl.exe "http://localhost:9200/orders/_doc/ORDER_ID?pretty"
-\`\`\`
+```
 
 Indexing is asynchronous. Check the Spring Boot logs if the document is not visible immediately.
 
@@ -215,21 +215,21 @@ Indexing is asynchronous. Check the Spring Boot logs if the document is not visi
 - MongoDB transactions require Atlas/replica-set transaction support.
 - The current outbox publisher is a basic scheduled poller; it does not yet implement distributed event claiming for multiple backend instances.
 - A crash after Kafka acknowledges an event but before the outbox status is updated can lead to republishing.
-- The consumer uses \`orderId\` as the OpenSearch document ID, so repeated indexing of the same create event overwrites the same document.
+- The consumer uses `orderId` as the OpenSearch document ID, so repeated indexing of the same create event overwrites the same document.
 - A production-ready version should add bounded retries, safe multi-instance claiming, event versioning/ordering, explicit idempotency, monitoring, and a dead-letter topic/recovery flow. A DLQ is not currently configured.
 
 ## API overview
 
-The main backend exposes authentication and user/order APIs under \`/api/auth\` and \`/api/user\`. The delivery backend exposes delivery assignment and location APIs under \`/api/deliveries\`. See the controllers and each service's local API configuration for the exact route/security details.
+The main backend exposes authentication and user/order APIs under `/api/auth` and `/api/user`. The delivery backend exposes delivery assignment and location APIs under `/api/deliveries`. See the controllers and each service's local API configuration for the exact route/security details.
 
 The AI service exposes:
-- \`GET /health\`
-- \`POST /chat\`
-- Interactive Swagger docs at \`/docs\`
+- `GET /health`
+- `POST /chat`
+- Interactive Swagger docs at `/docs`
 
 ## Security
 
-- Never commit MongoDB credentials, Kafka credentials, Gemini/OpenRouteService API keys, JWT private keys, or local \`.env\` files.
+- Never commit MongoDB credentials, Kafka credentials, Gemini/OpenRouteService API keys, JWT private keys, or local `.env` files.
 - Use environment variables or a secrets manager for local/deployed configuration.
 - Rotate credentials that have previously been committed or exposed, then remove the hardcoded values from tracked configuration and Git history as appropriate.
 - The documented OpenSearch container disables its security plugin for local-only development. Do not expose it publicly or use that setting in production.
