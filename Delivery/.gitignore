@@ -35,3 +35,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Local secrets and signing keys
+.env
+.env.*
+!.env.example
+src/main/resources/app.key
+src/main/resources/app.pub
