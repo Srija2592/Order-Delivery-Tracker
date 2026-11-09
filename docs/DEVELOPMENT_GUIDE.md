@@ -252,41 +252,99 @@ The consumer uses `orderId` as the OpenSearch document ID. Reprocessing an `ORDE
 
 ## 7. Configure and run the Spring Boot backends
 
-Both backend projects use Gradle wrappers. Open separate PowerShell terminals.
+Both backend projects use Gradle wrappers. Credentials are deliberately read from environment variables; do not put real values in tracked \`application.properties\` files.
+
+### Generate a fresh JWT signing key pair (one-time local setup)
+
+The two Spring Boot services must use the same public/private RSA key pair so that the Delivery service can validate tokens issued by the main backend.
+
+From the repository root, run this once after pulling the security cleanup:
+
+\`\`\`powershell
+openssl genpkey -algorithm RSA -out .\KafkaFullStack\src\main\resources\app.key -pkeyopt rsa_keygen_bits:2048
+openssl pkey -in .\KafkaFullStack\src\main\resources\app.key -pubout -out .\KafkaFullStack\src\main\resources\app.pub
+Copy-Item .\KafkaFullStack\src\main\resources\app.key .\Delivery\src\main\resources\app.key
+Copy-Item .\KafkaFullStack\src\main\resources\app.pub .\Delivery\src\main\resources\app.pub
+\`\`\`
+
+The \`app.key\` and \`app.pub\` files are ignored by Git. Keep the private key private. Do not upload either key to GitHub. If OpenSSL is not available, install it or use an equivalent trusted RSA key-generation process that produces a PKCS#8 private key and an X.509 public key in PEM format.
 
 ### Main backend — port 8080
 
-```powershell
+Open a new PowerShell terminal from the repository root and set the environment variables for that terminal:
+
+\`\`\`powershell
+$env:MONGODB_URI = "mongodb+srv://<db-user>:<db-password>@<cluster>/<database>?retryWrites=true&w=majority"
+$env:MONGODB_DATABASE = "<database-name>"
+$env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
+$env:KAFKA_SECURITY_PROTOCOL = "PLAINTEXT"
+\`\`\`
+
+For the local Docker Kafka broker, no SASL username/password is required. For a hosted Confluent Kafka cluster, use its bootstrap server and set the following instead (obtain fresh credentials from the provider):
+
+\`\`\`powershell
+$env:KAFKA_BOOTSTRAP_SERVERS = "<bootstrap-server>:9092"
+$env:KAFKA_SECURITY_PROTOCOL = "SASL_SSL"
+$env:KAFKA_SASL_MECHANISM = "PLAIN"
+$env:KAFKA_SASL_JAAS_CONFIG = 'org.apache.kafka.common.security.plain.PlainLoginModule required username="<api-key>" password="<api-secret>";'
+\`\`\`
+
+Then build and run:
+
+\`\`\`powershell
 cd KafkaFullStack
 .\gradlew.bat clean build
 .\gradlew.bat bootRun
-```
-
-The main backend needs:
-- MongoDB Atlas connection settings.
-- Kafka bootstrap server `localhost:9092`.
-- OpenSearch at `localhost:9200`.
-- The JWT key pair required by the existing security configuration.
-
-The MongoDB transaction manager is configured in `MongoTransactionConfig`. `OrderService.createOrder()` is transactional and saves both the order and its `ORDER_CREATED` outbox event.
+\`\`\`
 
 ### Delivery backend — port 8081
 
-In another terminal:
+Open a second PowerShell terminal from the repository root. Set the same MongoDB, Kafka, and JWT key-file configuration, plus the OpenRouteService key:
 
-```powershell
+\`\`\`powershell
+$env:MONGODB_URI = "mongodb+srv://<db-user>:<db-password>@<cluster>/<database>?retryWrites=true&w=majority"
+$env:MONGODB_DATABASE = "<database-name>"
+$env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
+$env:KAFKA_SECURITY_PROTOCOL = "PLAINTEXT"
+$env:OPENROUTESERVICE_API_KEY = "<your-new-api-key>"
+\`\`\`
+
+For a hosted Kafka broker, set the same four Kafka variables shown in the Confluent example above.
+
+Then run:
+
+\`\`\`powershell
 cd Delivery
 .\gradlew.bat clean build
 .\gradlew.bat bootRun
-```
+\`\`\`
 
-Configure the Delivery service's MongoDB/Kafka properties and OpenRouteService API key as required by its local configuration.
+### Environment variable reference
 
-### Important configuration and secret handling
+| Variable | Used by | Purpose |
+|---|---|---|
+| \`MONGODB_URI\` | Both backends | MongoDB Atlas connection string |
+| \`MONGODB_DATABASE\` | Both backends | Database name |
+| \`KAFKA_BOOTSTRAP_SERVERS\` | Both backends | Kafka bootstrap address; defaults to \`localhost:9092\` |
+| \`KAFKA_SECURITY_PROTOCOL\` | Both backends | Defaults to \`PLAINTEXT\` for local Docker Kafka |
+| \`KAFKA_SASL_MECHANISM\` | Both backends | Optional SASL mechanism for hosted Kafka |
+| \`KAFKA_SASL_JAAS_CONFIG\` | Both backends | Optional SASL JAAS login configuration |
+| \`OPENROUTESERVICE_API_KEY\` | Delivery backend | Route calculation API key |
+| \`JWT_PUBLIC_KEY\` / \`JWT_PRIVATE_KEY\` | Both backends | Optional overrides for the default local classpath key files |
 
-The repository contains Spring configuration files. Before sharing or deploying the project, make sure database passwords, Kafka credentials, JWT private keys, and external API keys are not committed. Use environment variables or a secrets manager and rotate any credentials that have previously been committed or exposed. Do not paste secrets into README files, screenshots, chat messages, or Git commits.
+PowerShell environment variables apply only to the current terminal process and its child processes. Set them again in each backend terminal after opening a new terminal. For persistent local setup, use a local, untracked environment-loading method; never commit actual values.
 
-The local Kafka example in this guide uses a PLAINTEXT listener at `localhost:9092`. If you use a hosted Kafka provider instead, configure its bootstrap server, TLS/SASL protocol, username, and password separately; do not mix hosted-cluster credentials with the local Docker configuration.
+### OpenSearch
+
+The main backend connects to the local OpenSearch node at \`http://localhost:9200\`. Start the \`opensearch\` Docker container before starting the main backend. The index initializer and health check run during application startup.
+
+### Important secret-handling rules
+
+- Never commit MongoDB URIs/passwords, Kafka SASL credentials, OpenRouteService/Gemini API keys, JWT private keys, or local \`.env\` files.
+- The committed \`app.key\` and \`app.pub\` files were removed. Generate a new pair locally as shown above.
+- Rotate credentials that were previously committed or exposed. Removing a value from the latest version of a file does not remove it from earlier Git commits.
+- The local Docker Kafka example uses PLAINTEXT and is intended only for localhost development.
+- The OpenSearch Docker setup disables its security plugin; do not expose that node publicly or use this setting in production.
 
 ## 8. Run the Angular frontend
 
